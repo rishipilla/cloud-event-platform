@@ -1,0 +1,87 @@
+services:
+
+  postgres:
+    image: postgres:17
+    container_name: event-platform-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: eventplatform
+    ports:
+      - "5435:5432"
+    volumes:
+      - event_platform_postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: event-platform-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: event-platform-api
+    ports:
+      - "8030:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/eventplatform
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+    depends_on:
+      - postgres
+      - rabbitmq
+
+  notification:
+    build:
+      context: .
+      dockerfile: consumers/notification/Dockerfile
+    container_name: event-platform-notification
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/eventplatform
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+    depends_on:
+      - postgres
+      - rabbitmq
+
+  analytics:
+    build:
+      context: .
+      dockerfile: consumers/analytics/Dockerfile
+    container_name: event-platform-analytics
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/eventplatform
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+    depends_on:
+      - postgres
+      - rabbitmq
+
+  audit:
+    build:
+      context: .
+      dockerfile: consumers/audit/Dockerfile
+    container_name: event-platform-audit
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/eventplatform
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+    depends_on:
+      - postgres
+      - rabbitmq
+
+volumes:
+
+  event_platform_postgres_data:
